@@ -1,0 +1,387 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>كتالوج المنتجات</title>
+  <style>
+    body{font-family:system-ui,Segoe UI,Tahoma,Arial; margin:0; background:#0f1115; color:#fff}
+    header{padding:16px; position:sticky; top:0; background:#0f1115cc; backdrop-filter: blur(10px); border-bottom:1px solid #222; z-index:10}
+    .wrap{max-width:1100px; margin:auto; padding:16px}
+    .row{display:flex; gap:10px; flex-wrap:wrap}
+    input,select,textarea{padding:10px; border-radius:12px; border:1px solid #2a2a2a; background:#151922; color:#fff; outline:none}
+    button{padding:10px 12px; border-radius:12px; border:0; cursor:pointer}
+    .btn{background:#2d7dff; color:#fff; font-weight:700}
+    .btn2{background:#23283a; color:#fff}
+    .grid{display:grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap:14px}
+    .card{background:#151922; border:1px solid #23283a; border-radius:18px; overflow:hidden; position:relative}
+    .card img{width:100%; height:175px; object-fit:cover; display:block; background:#0b0d12}
+    .p{padding:12px}
+    .muted{opacity:.75; font-size:13px}
+    .priceLine{display:flex; gap:10px; align-items:baseline; flex-wrap:wrap}
+    .price{font-size:16px; font-weight:900}
+    .old{opacity:.65; text-decoration:line-through}
+    .badge{position:absolute; top:10px; right:10px; background:#ff3b3b; padding:6px 10px; border-radius:999px; font-weight:800; font-size:12px}
+    .badge2{position:absolute; top:10px; left:10px; background:#2d7dff; padding:6px 10px; border-radius:999px; font-weight:800; font-size:12px}
+    .cartbar{position:fixed; bottom:16px; left:16px; right:16px; max-width:1100px; margin:auto; background:#151922; border:1px solid #23283a; border-radius:18px; padding:12px; display:flex; gap:10px; align-items:center; justify-content:space-between}
+    .pill{background:#2d7dff; padding:4px 10px; border-radius:999px; font-weight:900}
+    .modal{position:fixed; inset:0; background:#0008; display:none; align-items:center; justify-content:center; padding:16px; z-index:20}
+    .box{max-width:760px; width:100%; background:#0f1115; border:1px solid #23283a; border-radius:18px; padding:14px}
+    table{width:100%; border-collapse:collapse}
+    td,th{border-bottom:1px solid #23283a; padding:10px; text-align:right; vertical-align:top}
+    .smallbtn{padding:6px 10px; border-radius:10px}
+    .totals{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px}
+    .totalCard{background:#151922; border:1px solid #23283a; border-radius:16px; padding:12px}
+  </style>
+</head>
+<body>
+<header>
+  <div class="wrap row" style="align-items:center; justify-content:space-between">
+    <div style="font-weight:900; font-size:18px">🛍️ كتالوج المنتجات</div>
+    <div class="row" style="align-items:center">
+      <input id="q" placeholder="ابحث عن منتج..." />
+      <select id="cat"><option value="">كل التصنيفات</option></select>
+      <button class="btn2" onclick="openCart()">السلة 🛒</button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div id="status" class="muted">جاري تحميل المنتجات...</div>
+  <div id="grid" class="grid" style="margin-top:12px"></div>
+</main>
+
+<div class="cartbar">
+  <div class="row" style="align-items:center">
+    <div>السلة</div>
+    <div class="pill" id="cartCount">0</div>
+    <div class="muted" id="cartTotal">الإجمالي: 0</div>
+  </div>
+  <div class="row">
+    <button class="btn2" onclick="clearCart()">تفريغ</button>
+    <button class="btn" onclick="openCart()">إتمام الطلب عبر واتساب</button>
+  </div>
+</div>
+
+<div class="modal" id="modal">
+  <div class="box">
+    <div class="row" style="justify-content:space-between; align-items:center">
+      <div style="font-weight:900">🧾 السلة وإتمام الطلب</div>
+      <button class="btn2" onclick="closeCart()">إغلاق</button>
+    </div>
+
+    <div style="margin-top:10px; display:grid; grid-template-columns:1fr 1fr; gap:10px">
+      <input id="name" placeholder="اسم الزبون" />
+      <input id="phone" placeholder="رقم الهاتف" />
+      <input id="address" placeholder="العنوان الكامل + أقرب نقطة دلالة" style="grid-column:1 / -1" />
+      <textarea id="note" placeholder="ملاحظات (اختياري)" rows="3" style="grid-column:1 / -1"></textarea>
+    </div>
+
+    <div style="margin-top:12px; overflow:auto; max-height:300px">
+      <table>
+        <thead>
+          <tr>
+            <th>المنتج</th><th>السعر</th><th>العدد</th><th>المجموع</th><th></th>
+          </tr>
+        </thead>
+        <tbody id="cartRows"></tbody>
+      </table>
+    </div>
+
+    <div class="totals">
+      <div class="totalCard">
+        <div class="muted">الإجمالي قبل الخصم</div>
+        <div style="font-weight:900; font-size:18px" id="sumOld">0</div>
+      </div>
+      <div class="totalCard">
+        <div class="muted">الإجمالي بعد الخصم</div>
+        <div style="font-weight:900; font-size:18px" id="sumNew">0</div>
+      </div>
+      <div class="totalCard" style="grid-column:1 / -1">
+        <div class="muted">مقدار التوفير</div>
+        <div style="font-weight:900; font-size:18px" id="sumSave">0</div>
+      </div>
+    </div>
+
+    <div class="row" style="justify-content:space-between; margin-top:12px; align-items:center">
+      <div class="muted">سيتم فتح واتساب برسالة جاهزة تتضمن تفاصيل الطلب كاملة.</div>
+      <button class="btn" onclick="sendWhatsApp()">إرسال الطلب على واتساب</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ✅ رقم الواتساب (بدون +)
+  const WHATSAPP_NUMBER = "9647719183122";
+
+  // ✅ رابط CSV من Google Sheet
+  const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRlOmNYb8nqPMu2NXgFxXop7R5qmqeoPw3EhHzH8ghHmNLdnd8YxwrnL9tQdVxs4EYKM3X2KRWkICcf/pub?gid=0&single=true&output=csv";
+
+  const $ = (id)=>document.getElementById(id);
+  const state = { products:[], cart: loadCart() };
+
+  function loadCart(){ try{ return JSON.parse(localStorage.getItem("cart")||"{}"); }catch(e){ return {}; } }
+  function saveCart(){ localStorage.setItem("cart", JSON.stringify(state.cart)); renderCartBar(); }
+
+  function splitCSVLine(line){
+    const out=[]; let cur=""; let inQ=false;
+    for(let i=0;i<line.length;i++){
+      const c=line[i];
+      if(c === '"'){ inQ = !inQ; continue; }
+      if(c === ',' && !inQ){ out.push(cur); cur=""; continue; }
+      cur += c;
+    }
+    out.push(cur);
+    return out;
+  }
+  function parseCSV(text){
+    const lines = text.trim().split(/\r?\n/);
+    const headers = splitCSVLine(lines[0]).map(h=>h.trim());
+    return lines.slice(1).map(line=>{
+      const cols = splitCSVLine(line);
+      const obj = {};
+      headers.forEach((h,i)=>obj[h]= (cols[i]||"").trim());
+      return obj;
+    });
+  }
+
+  function money(n){ return (Number(n)||0).toLocaleString("ar-IQ"); }
+  function esc(s){ return String(s||"").replace(/[&<>"']/g, m=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[m])); }
+  function pct(oldP, newP){
+    oldP = Number(oldP||0); newP = Number(newP||0);
+    if(!oldP || oldP <= newP) return 0;
+    return Math.round(((oldP - newP) / oldP) * 100);
+  }
+
+  async function loadProducts(){
+    try{
+      const res = await fetch(SHEET_CSV_URL, { cache: "no-store" });
+      const text = await res.text();
+      const rows = parseCSV(text);
+
+      state.products = rows
+        .filter(r=>r.id && r.name)
+        .map(r=>{
+          const price = Number(r.price||0);
+          const old_price = Number(r.old_price||0) || price;
+          const offer = String(r.offer||"").toLowerCase().trim() === "yes";
+          const disc = pct(old_price, price);
+          return {
+            id: String(r.id),
+            name: r.name,
+            price,
+            old_price,
+            offer,
+            discount_note: r.discount_note || "",
+            image: r.image || "",
+            category: r.category || "عام",
+            desc: r.desc || "",
+            discountPercent: disc
+          };
+        });
+
+      $("status").textContent = `تم تحميل ${state.products.length} منتج`;
+      buildCategories();
+      renderProducts();
+      renderCartBar();
+    }catch(e){
+      $("status").textContent = "فشل تحميل المنتجات. تأكد من رابط CSV ومن أنه Published.";
+      console.error(e);
+    }
+  }
+
+  function buildCategories(){
+    const cats = [...new Set(state.products.map(p=>p.category))].sort();
+    const sel = $("cat");
+    cats.forEach(c=>{
+      const o=document.createElement("option");
+      o.value=c; o.textContent=c;
+      sel.appendChild(o);
+    });
+  }
+
+  function renderProducts(){
+    const q = ($("q").value||"").toLowerCase();
+    const cat = $("cat").value;
+
+    const list = state.products.filter(p=>{
+      const okQ = !q || (p.name.toLowerCase().includes(q) || p.desc.toLowerCase().includes(q));
+      const okC = !cat || p.category === cat;
+      return okQ && okC;
+    });
+
+    const grid = $("grid");
+    grid.innerHTML = "";
+    list.forEach(p=>{
+      const card = document.createElement("div");
+      card.className = "card";
+
+      const showDiscount = p.old_price > p.price;
+      const badgeDiscount = showDiscount ? `خصم ${p.discountPercent}%` : "";
+      const badgeOffer = p.offer ? (p.discount_note ? p.discount_note : "عرض خاص") : "";
+
+      card.innerHTML = `
+        ${showDiscount ? `<div class="badge">${esc(badgeDiscount)}</div>` : ``}
+        ${p.offer ? `<div class="badge2">${esc(badgeOffer)}</div>` : ``}
+        <img src="${esc(p.image)}" onerror="this.style.display='none'">
+        <div class="p">
+          <div style="font-weight:900">${esc(p.name)}</div>
+          <div class="muted">${esc(p.category)} • ${esc(p.desc)}</div>
+
+          <div class="priceLine" style="margin-top:8px">
+            <div class="price">${money(p.price)} د.ع</div>
+            ${showDiscount ? `<div class="old">${money(p.old_price)} د.ع</div>` : ``}
+          </div>
+
+          <div class="row" style="justify-content:space-between; align-items:center; margin-top:10px">
+            <button class="btn" onclick="addToCart('${p.id}')">إضافة للسلة</button>
+            <button class="btn2" onclick="buyNow('${p.id}')">اطلب الآن</button>
+          </div>
+        </div>
+      `;
+      grid.appendChild(card);
+    });
+  }
+
+  function addToCart(id){
+    state.cart[id] = (state.cart[id]||0) + 1;
+    saveCart();
+  }
+  function buyNow(id){
+    addToCart(id);
+    openCart();
+  }
+  function decFromCart(id){
+    if(!state.cart[id]) return;
+    state.cart[id]--;
+    if(state.cart[id]<=0) delete state.cart[id];
+    saveCart(); renderCartModal();
+  }
+  function incToCart(id){
+    state.cart[id] = (state.cart[id]||0) + 1;
+    saveCart(); renderCartModal();
+  }
+  function removeFromCart(id){
+    delete state.cart[id];
+    saveCart(); renderCartModal();
+  }
+  function clearCart(){
+    state.cart = {};
+    saveCart(); renderCartModal();
+  }
+
+  function cartItems(){
+    return Object.entries(state.cart).map(([id,qty])=>{
+      const p = state.products.find(x=>x.id===id);
+      if(!p) return null;
+      const lineNew = p.price * qty;
+      const lineOld = p.old_price * qty;
+      return { ...p, qty, lineNew, lineOld };
+    }).filter(Boolean);
+  }
+
+  function renderCartBar(){
+    const items = cartItems();
+    const count = items.reduce((a,b)=>a+b.qty,0);
+    const totalNew = items.reduce((a,b)=>a+b.lineNew,0);
+    $("cartCount").textContent = count;
+    $("cartTotal").textContent = `الإجمالي: ${money(totalNew)} د.ع`;
+  }
+
+  function openCart(){
+    $("modal").style.display="flex";
+    renderCartModal();
+  }
+  function closeCart(){
+    $("modal").style.display="none";
+  }
+
+  function renderCartModal(){
+    const items = cartItems();
+    const tbody = $("cartRows");
+    tbody.innerHTML = "";
+
+    let sumNew = 0, sumOld = 0;
+
+    items.forEach(it=>{
+      sumNew += it.lineNew;
+      sumOld += it.lineOld;
+
+      const showOld = it.old_price > it.price;
+      const priceCell = showOld
+        ? `<div><b>${money(it.price)}</b> د.ع</div><div class="muted" style="text-decoration:line-through">${money(it.old_price)} د.ع</div>`
+        : `<div><b>${money(it.price)}</b> د.ع</div>`;
+
+      const tr=document.createElement("tr");
+      tr.innerHTML = `
+        <td>
+          <div style="font-weight:900">${esc(it.name)}</div>
+          <div class="muted">${esc(it.category)}</div>
+          ${it.offer ? `<div class="muted">⭐ ${esc(it.discount_note || "عرض خاص")}</div>` : ``}
+        </td>
+        <td>${priceCell}</td>
+        <td>
+          <button class="smallbtn btn2" onclick="decFromCart('${it.id}')">-</button>
+          <b style="margin:0 8px">${it.qty}</b>
+          <button class="smallbtn btn2" onclick="incToCart('${it.id}')">+</button>
+        </td>
+        <td><b>${money(it.lineNew)}</b> د.ع</td>
+        <td><button class="smallbtn btn2" onclick="removeFromCart('${it.id}')">حذف</button></td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    const save = Math.max(0, sumOld - sumNew);
+    $("sumOld").textContent = `${money(sumOld)} د.ع`;
+    $("sumNew").textContent = `${money(sumNew)} د.ع`;
+    $("sumSave").textContent = `${money(save)} د.ع`;
+  }
+
+  function sendWhatsApp(){
+    const items = cartItems();
+    if(items.length===0){ alert("السلة فارغة"); return; }
+
+    const name = $("name").value.trim();
+    const phone = $("phone").value.trim();
+    const address = $("address").value.trim();
+    const note = $("note").value.trim();
+
+    if(!name || !phone || !address){
+      alert("رجاءً اكتب الاسم + الهاتف + العنوان");
+      return;
+    }
+
+    const sumNew = items.reduce((a,b)=>a+b.lineNew,0);
+    const sumOld = items.reduce((a,b)=>a+b.lineOld,0);
+    const save = Math.max(0, sumOld - sumNew);
+
+    let msg = `طلب جديد 🛒%0A%0A`;
+    msg += `الاسم: ${encodeURIComponent(name)}%0A`;
+    msg += `الهاتف: ${encodeURIComponent(phone)}%0A`;
+    msg += `العنوان: ${encodeURIComponent(address)}%0A`;
+    if(note) msg += `ملاحظات: ${encodeURIComponent(note)}%0A`;
+    msg += `%0Aالمنتجات:%0A`;
+
+    items.forEach((it,i)=>{
+      const hasDisc = it.old_price > it.price;
+      const line = `${i+1}) ${it.name} | عدد: ${it.qty} | سعر: ${it.price} | مجموع: ${it.lineNew}` +
+        (hasDisc ? ` | قبل: ${it.old_price}` : ``) +
+        (it.offer ? ` | عرض: ${it.discount_note || "عرض خاص"}` : ``);
+      msg += `${encodeURIComponent(line)}%0A`;
+    });
+
+    msg += `%0Aالإجمالي قبل الخصم: ${sumOld}%0A`;
+    msg += `الإجمالي بعد الخصم: ${sumNew}%0A`;
+    msg += `التوفير: ${save}%0A`;
+
+    const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${msg}`;
+    window.open(url, "_blank");
+  }
+
+  $("q").addEventListener("input", renderProducts);
+  $("cat").addEventListener("change", renderProducts);
+
+  loadProducts();
+</script>
+</body>
+</html>
